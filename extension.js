@@ -95,7 +95,7 @@ async function applyChanges(changes) {
 
 	editor.edit(editBuilder => {
 		for (let i = 0; i < sortedChanges.length; i++) {
-			editBuilder.insert(sortedChanges[i].position, sortedChanges[i].text);
+			editBuilder.insert(sortedChanges[i].position, applyIndentation(sortedChanges[i].text, sortedChanges[i].position));
 		}
 	}).then(success => {
 		if(success) {
@@ -151,6 +151,27 @@ function getPositionBelowString(editor, targetString) {
 		vscode.window.showErrorMessage(`Failed to get position below string "${targetString}" because an error occurred: ${error}`)
 		return null
 	}
+}
+
+//Some lines in the file will be indented, this assures consistency
+function applyIndentation(string, position) {
+	const editor = getEditor();
+	if (verifyEditor(editor) == false) {
+		return string;
+	} 
+
+	const document = editor.document;
+	if (position.line > 0) {
+		const lineAbove = document.lineAt(position.line - 1);
+		if (lineAbove.text.substring(lineAbove.text.length - 1) == "{") {
+			const indentation = lineAbove.text.substring(0, lineAbove.firstNonWhitespaceCharacterIndex);
+			return indentation + "\t" + string;
+		}
+	}
+
+	const line = document.lineAt(position.line);
+	const indentation = line.text.substring(0, line.firstNonWhitespaceCharacterIndex);
+	return indentation + string;
 }
 
 //-----------------------------//
@@ -213,7 +234,7 @@ function addInstantiation(datatype, nameOfObject, ...args) {
 	const document = editor.document;
 	const documentText = document.getText();
 
-	let instantiationString = nameOfObject + " new " + datatype;
+	let instantiationString = nameOfObject + " = new " + datatype;
 
 	if (args.length != 0) {
 		instantiationString += "(";
