@@ -1,0 +1,42 @@
+{
+  "name": "wpilib-templates",
+  "displayName": "WPILIB templates",
+  "description": "Basic templates for WPILIB FRC code subsystems, commands, and other useful snippets",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.120.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:wpilib-templates.Wpilib_Test",
+    "onCommand:wpilib-templates.Instantiate_Motor"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "wpilib-templates.Wpilib_Test",
+        "title": "WPILIB Test"
+      },
+      {
+        "command": "wpilib-templates.Instantiate_Motor",
+        "title": "Instantiate motor"
+      }
+    ]
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.120.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.3"
+  }
+}
