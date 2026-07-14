@@ -1,6 +1,7 @@
-
 const vscode = require('vscode');
-const path = require('path')
+const path = require('path');
+const fs = require('fs');
+const readline = require('readline');
 
 const { MOTORS, MOTOR_IMPORTS } = require ('./constants.js');
 
@@ -38,24 +39,18 @@ function activate(context) {
 
 		const motor = await getSelection(Object.values(MOTORS), "Please choose a motor type")
 		
-		let motorImport
-		
-		switch (motor) {
-			case MOTORS.TALONFX:
-				motorImport = MOTOR_IMPORTS.TALONFX_STANDARD;
-				break;
-			case MOTORS.SPARKMAX:
-				motorImport = MOTOR_IMPORTS.SPARKMAX_STANDARD;
-				break;
-			default:
-				break;
-		}
+		const motorImport = getMotorImport(motor)
+
 
 		const changes = []
-
-		changes.push(addImport(motor, motorImport));
-		changes.push(addDefinition(motor, motor + "1"));
-		changes.push(addInstantiation(motor, motor + "1", 3));
+		const motor1name = motor + "1"
+		changes.push(
+			addImport(motor, motorImport),
+			addDefinition(motor, motor1name),
+			addInstantiation(motor, motor1name, 3),
+			addMethod("/Users/brightongannaway/wpilib-templates/method_templates/motorRunBasic.java", "run" + motor1name, motor1name)
+		);
+		
 		applyChanges(changes);
 
 	});
@@ -95,6 +90,9 @@ async function applyChanges(changes) {
 
 	editor.edit(editBuilder => {
 		for (let i = 0; i < sortedChanges.length; i++) {
+			if (sortedChanges[i] === null) {
+				continue
+			}
 			editBuilder.insert(sortedChanges[i].position, applyIndentation(sortedChanges[i].text, sortedChanges[i].position));
 		}
 	}).then(success => {
@@ -172,6 +170,21 @@ function applyIndentation(string, position) {
 	const line = document.lineAt(position.line);
 	const indentation = line.text.substring(0, line.firstNonWhitespaceCharacterIndex);
 	return indentation + string;
+}
+
+//-----------------------------//
+//---- Mass Data Retrieval ----//
+//-----------------------------//
+
+function getMotorImport(motor) {
+	switch (motor) {
+		case MOTORS.TALONFX:
+			return MOTOR_IMPORTS.TALONFX_STANDARD
+		case MOTORS.SPARKMAX:
+			return MOTOR_IMPORTS.SPARKMAX_STANDARD
+		default:
+			return null;
+	}
 }
 
 //-----------------------------//
@@ -257,8 +270,56 @@ function addInstantiation(datatype, nameOfObject, ...args) {
 	}
 }
 
+function addMethod(methodFilePath, methodName, ...variables) {
+	const editor = getEditor();
+	if (verifyEditor(editor) == false) {
+		return false
+	} 
+	const document = editor.document;
+	const documentText = document.getText();
+
+	let methodString = methodParser(methodFilePath, methodName, variables);
+
+	if (documentText.includes("class " + getFileName(editor, false)) && documentText.includes("}")) {
+		const lastIndex = documentText.lastIndexOf("}");
+		const position = document.positionAt(lastIndex);
+		let returnPosition = position.translate(-1,0);
+		returnPosition = new vscode.Position(returnPosition.line, 0);
+		return new Change(returnPosition, "\n" + methodString);
+	} else {
+		vscode.window.showErrorMessage(`Failed to create method by the name of ${methodName} as there is no available class structure to support adding methods`)
+		return null
+	}
+}
+
 function methodParser(methodFilePath, methodName, ...variables) {
+	//creating variable map
+	const variableNames = new Map();
+	variableNames.set("name_0", methodName)
+
+	for (let i = 0; i < variables.length; i++) {
+		variableNames.set("name_" + (i + 1), variables[i]);
+	}
 	
+	try {
+		let content = fs.readFileSync(methodFilePath, 'utf-8' );
+		
+		content = content.replaceAll("$[name_0]", methodName);
+		
+		
+		if (variables.length > 0) {
+			for (let i = 1; i <= variables.length; i++) {
+				content = content.replaceAll(`$[name_${i}]`.toString(), variableNames.get("name_" + i));
+			}
+		}
+
+		return content
+
+	} catch (error) {
+		vscode.window.showErrorMessage(`Could not load methods due to file error: ${error}`);
+		return "";
+	}
+
 }
 
 
